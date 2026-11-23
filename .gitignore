@@ -1,0 +1,23 @@
+# Environment & rahasia
+.env
+.env.*
+!.env.example
+cloudflared/cert.pem
+cloudflared/*.json
+cloudflared/config.yml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Data & unggahan lokal
+docker/mysql/
+media/*
+!media/.gitkeep
+hostnet/*
+!hostnet/.gitkeep
+
+# Log
+*.log
