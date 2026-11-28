@@ -233,3 +233,50 @@ async def smart_search(data: SmartSearchRequest, db: Session = Depends(get_db)):
     # Pencarian katalog publik; endpoint tidak membutuhkan token.
     text = safe_question(data.pertanyaan)
     answer = await ask_ai(f"Ubah kalimat pencarian makanan ini menjadi kata kunci singkat saja: {text}", text)
+    terms = {word.strip().lower() for word in (text + " " + answer).split() if len(word.strip()) >= 3}
+    aliases = {
+        "segar": {"minuman", "dingin", "teh", "jus", "es"},
+        "dingin": {"minuman", "teh", "jus", "es"},
+        "manis": {"minuman", "teh", "jus"},
+        "minuman": {"teh", "jus", "es"},
+    }
+    expanded_terms = terms | {alias for term in terms for alias in aliases.get(term, set())}
+    conditions = [
+        Product.nama.ilike(f"%{term}%")
+        for term in expanded_terms
+    ] + [
+        Product.deskripsi.ilike(f"%{term}%")
+        for term in expanded_terms
+    ] + [
+        Product.jenis_makanan.ilike(f"%{term}%")
+        for term in expanded_terms
+    ]
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    active = or_(Product.batas_konsumsi.is_(None), Product.batas_konsumsi >= now)
+    products = list(db.scalars(select(Product).where(or_(*conditions), Product.stok > 0, active).order_by(Product.id.desc())).unique().all()) if conditions else []
+    return {"kata_kunci": answer, "produk": products}
+
+
+@router.get("/dampakku")
+async def impact(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    buyer_only(user)
+    rows = list(db.scalars(select(Order).where(Order.user_id == user.id, Order.status == "selesai")).all())
+    portions = sum(x.jumlah for x in rows)
+    saved = sum(max(0, x.total_harga) for x in rows)
+    fallback = f"Kamu sudah menyelesaikan {len(rows)} pesanan dan membantu menyelamatkan {portions} porsi makanan."
+    answer = await ask_ai(f"Buat ringkasan ramah dari angka ini tanpa mengubahnya: pesanan selesai={len(rows)}, porsi terselamatkan={portions}, total belanja={saved} rupiah.", fallback)
+    return {"pesanan_selesai": len(rows), "porsi_terselamatkan": portions, "total_belanja": saved, "ringkasan": answer}
+
+
+@router.post("/tanya-produk")
+async def ask_product(data: AskProductRequest, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    authenticated_only(user)
+    question = safe_question(data.pertanyaan)
+    product = db.get(Product, data.produk_id)
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    if not product or product.stok <= 0 or (product.batas_konsumsi and product.batas_konsumsi < now):
+        raise HTTPException(404, "Produk tidak tersedia atau sudah melewati batas konsumsi")
+    answer = await ask_ai(f"Jawab pertanyaan umum tentang waktu konsumsi produk {product.nama}: {question}. Jangan menyatakan pasti aman atau basi. Jangan memberi diagnosis.", f"Produk {product.nama} memiliki informasi batas konsumsi dari penjual. Periksa label dan kondisi produk secara langsung.")
+    return {"produk_id": product.id, "sisa_waktu": "Tidak tersedia", "jawaban": answer, "catatan": WARNING}
+
+class CartQuestionRequest(BaseModel):
