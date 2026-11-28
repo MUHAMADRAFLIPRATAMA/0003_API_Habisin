@@ -78,3 +78,16 @@ def checkout_qr(session_id: int, request: Request, user: User = Depends(current_
     if not session or session.user_id != user.id or session.status != "aktif": raise HTTPException(404, "Checkout tidak ditemukan")
     if datetime.now() > session.payment_expires_at:
         session.payment_code = secrets.token_urlsafe(24); session.payment_expires_at = datetime.now() + timedelta(seconds=PAYMENT_QR_TTL_SECONDS); db.commit(); db.refresh(session)
+    payload = f"{payment_base_url(request)}/pesanan/bayar/{session.payment_code}"
+    image = qrcode.make(payload); buffer = io.BytesIO(); image.save(buffer, format="PNG")
+    total = sum(x.total_harga for x in db.scalars(select(Order).where(Order.checkout_session_id == session.id)).all())
+    return {
+        "session_id": session.id,
+        "payment_code": session.payment_code,
+        "url": payload,
+        "gambar_qr": "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode(),
+        "berlaku_sampai": session.payment_expires_at,
+        "total_harga": total,
+        "detik_berlaku": PAYMENT_QR_TTL_SECONDS,
+    }
+
