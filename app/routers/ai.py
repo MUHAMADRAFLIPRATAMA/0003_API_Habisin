@@ -304,6 +304,7 @@ def _parse_batas(value: str | None) -> datetime | None:
     return None
 
 
+# Menyusun ringkasan isi keranjang sebagai konteks pertanyaan AI.
 def _cart_snapshot(db: Session, user: User) -> tuple[list[dict], dict]:
     """Membaca isi keranjang pengguna beserta ringkasan yang dipakai fitur AI."""
     rows = (
