@@ -327,3 +327,50 @@ def _cart_snapshot(db: Session, user: User) -> tuple[list[dict], dict]:
                 "jumlah": cart.jumlah,
                 "harga": harga,
                 "harga_normal": produk.harga_normal,
+                "subtotal": subtotal,
+                "stok": produk.stok,
+                "jenis_makanan": produk.jenis_makanan,
+                "batas_konsumsi": produk.batas_konsumsi,
+                "sisa_jam": sisa_jam,
+            }
+        )
+    ringkasan = {
+        "jumlah_item": sum(i["jumlah"] for i in item),
+        "jenis_produk": len(item),
+        "total": total,
+        "hemat": hemat,
+        "segera_kedaluwarsa": segera,
+    }
+    return item, ringkasan
+
+
+def _cart_fallback(item: list[dict], ringkasan: dict, pertanyaan: str) -> str:
+    """Jawaban tanpa model bahasa: disusun dari data keranjang agar fitur tetap berguna."""
+    if not item:
+        return "Keranjang masih kosong. Tambahkan produk surplus dulu, lalu tanyakan lagi."
+    nama = ", ".join(f"{i['nama']} x{i['jumlah']}" for i in item[:3])
+    kalimat = [
+        f"Keranjang berisi {ringkasan['jumlah_item']} item dari {ringkasan['jenis_produk']} produk: {nama}.",
+        f"Total {ringkasan['total']:,} rupiah dengan penghematan {ringkasan['hemat']:,} rupiah dibanding harga normal.".replace(",", "."),
+    ]
+    if ringkasan["segera_kedaluwarsa"]:
+        kalimat.append(
+            "Segera dihabiskan atau diambil hari ini: " + ", ".join(ringkasan["segera_kedaluwarsa"]) + "."
+        )
+    if "murah" in pertanyaan.lower() or "hemat" in pertanyaan.lower():
+        termurah = min(item, key=lambda i: i["harga"])
+        kalimat.append(f"Item termurah adalah {termurah['nama']} ({termurah['harga']:,} rupiah).".replace(",", "."))
+    return " ".join(kalimat)
+
+
+@router.get("/keranjang")
+def cart_insight(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Deteksi isi keranjang pengguna beserta ringkasan hemat dan produk yang mendesak."""
+    buyer_only(user)
+    item, ringkasan = _cart_snapshot(db, user)
+    return {
+        "item": item,
+        "ringkasan": ringkasan,
+        "dari_gemini": False,
+        "model_tersedia": bool(GEMINI_API_KEY),
+    }
