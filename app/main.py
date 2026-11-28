@@ -42,6 +42,7 @@ app = FastAPI(title="Habisin API", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
 media_dir = Path(__file__).resolve().parent.parent / "media"
 media_dir.mkdir(exist_ok=True)
+# Menyajikan berkas unggahan produk melalui jalur /media.
 app.mount("/media", StaticFiles(directory=media_dir), name="media")
 app.include_router(auth.router)
 app.include_router(products.router)
