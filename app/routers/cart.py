@@ -64,3 +64,17 @@ def checkout(user: User = Depends(current_user), db: Session = Depends(get_db)):
     for item in items:
         product = db.scalar(select(Product).where(Product.id == item.product_id).with_for_update())
         if not product or product.stok < item.jumlah: raise HTTPException(400, "Stok produk berubah atau tidak mencukupi")
+        product.stok -= item.jumlah; locked.append((item, product))
+    session = CheckoutSession(user_id=user.id, payment_code=secrets.token_urlsafe(24), payment_expires_at=datetime.now() + timedelta(seconds=PAYMENT_QR_TTL_SECONDS))
+    db.add(session); db.flush()
+    for item, product in locked:
+        db.add(Order(user_id=user.id, product_id=product.id, jumlah=item.jumlah, total_harga=product.harga_diskon * item.jumlah, status="menunggu", payment_code=None, payment_expires_at=session.payment_expires_at, checkout_session_id=session.id))
+    db.commit(); db.refresh(session)
+    return {"session_id": session.id, "payment_code": session.payment_code, "total_harga": sum(product.harga_diskon * item.jumlah for item, product in locked), "berlaku_sampai": session.payment_expires_at}
+
+@router.get("/checkout/{session_id}/qr")
+def checkout_qr(session_id: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    session = db.get(CheckoutSession, session_id)
+    if not session or session.user_id != user.id or session.status != "aktif": raise HTTPException(404, "Checkout tidak ditemukan")
+    if datetime.now() > session.payment_expires_at:
+        session.payment_code = secrets.token_urlsafe(24); session.payment_expires_at = datetime.now() + timedelta(seconds=PAYMENT_QR_TTL_SECONDS); db.commit(); db.refresh(session)
