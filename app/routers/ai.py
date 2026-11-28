@@ -92,3 +92,50 @@ def gemini_prompt(prompt: str) -> str:
         {"maxOutputTokens": 600, "thinkingConfig": {"thinkingBudget": 0}},
         {"maxOutputTokens": 600},
     ]
+    last_error = "Gemini tidak merespons"
+    for model in _gemini_models():
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        for generation_config in variants:
+            body = json.dumps({"contents": [{"parts": [{"text": prompt}]}], "generationConfig": generation_config}).encode()
+            request = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY}, method="POST")
+            try:
+                with urllib.request.urlopen(request, timeout=12) as response:
+                    data = json.loads(response.read())
+                parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+                text = "".join(str(part.get("text", "")) for part in parts).strip()
+                if text:
+                    return text
+                last_error = "Gemini mengembalikan jawaban kosong"
+            except urllib.error.HTTPError as exc:
+                last_error = f"Gemini HTTP {exc.code}"
+                if exc.code in (401, 403):
+                    raise RuntimeError(last_error)
+            except Exception as exc:
+                last_error = type(exc).__name__
+    raise RuntimeError(last_error)
+
+
+def one_sentence(text: str, fallback: str) -> str:
+    value = " ".join(str(text).replace("\n", " ").split()).strip()
+    value = re.split(r"(?<=[.!?])\s+", value, maxsplit=1)[0].strip()
+    if not value:
+        value = fallback
+    if value[-1] not in ".!?":
+        value += "."
+    return value
+
+
+async def ask_ai(prompt: str, fallback: str) -> str:
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(gemini_prompt, prompt), timeout=15)
+    except Exception:
+        try:
+            return await asyncio.wait_for(asyncio.to_thread(n8n_prompt, prompt, []), timeout=N8N_RAG_TIMEOUT_SECONDS)
+        except Exception:
+            return fallback
+
+
+def n8n_prompt(question: str, products: list[dict]) -> str:
+    if not N8N_RAG_URL:
+        raise RuntimeError("n8n belum dikonfigurasi")
+    body = json.dumps({"pesan": question, "produk": products}).encode()
