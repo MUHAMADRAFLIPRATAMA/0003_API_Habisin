@@ -139,3 +139,50 @@ def n8n_prompt(question: str, products: list[dict]) -> str:
     if not N8N_RAG_URL:
         raise RuntimeError("n8n belum dikonfigurasi")
     body = json.dumps({"pesan": question, "produk": products}).encode()
+    request = urllib.request.Request(
+        N8N_RAG_URL,
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=N8N_RAG_TIMEOUT_SECONDS) as response:
+        data = json.loads(response.read())
+    answer = str(data.get("jawaban", "")).strip()
+    if not answer:
+        raise RuntimeError("n8n mengembalikan jawaban kosong")
+    return answer
+
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat(data: ChatRequest, db: Session = Depends(get_db)):
+    question = safe_question(data.pesan)
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    active = or_(Product.batas_konsumsi.is_(None), Product.batas_konsumsi >= now)
+    products = list(db.scalars(select(Product).where(Product.stok > 0, active).order_by(Product.id.desc()).limit(30)).all())
+    catalog = "\\n".join(f"- {p.nama}: {p.deskripsi} (jenis: {p.jenis_makanan}, stok: {p.stok})" for p in products)
+    context_match = re.match(r"Tentang produk\\s+(.+?):\\s*(.*)", question, re.IGNORECASE | re.DOTALL)
+    selected_name = context_match.group(1).strip() if context_match else ""
+    actual_question = context_match.group(2).strip() if context_match else question
+    search_terms = {word.lower() for word in re.findall(r"[a-zA-ZÀ-ÿ0-9]+", actual_question) if len(word) > 2}
+    matched_products = [p for p in products if selected_name.lower() == p.nama.lower()] if selected_name else [p for p in products if search_terms.intersection({word.lower() for word in re.findall(r"[a-zA-ZÀ-ÿ0-9]+", f"{p.nama} {p.deskripsi or ''} {p.jenis_makanan or ''}")})]
+    product_data = [{"id": p.id, "nama": p.nama, "deskripsi": p.deskripsi, "harga_diskon": p.harga_diskon, "stok": p.stok, "jenis_makanan": p.jenis_makanan} for p in matched_products]
+    matched_catalog = "\\n".join(f"- {p.nama}: {p.deskripsi} (jenis: {p.jenis_makanan}, stok: {p.stok})" for p in matched_products)
+    prompt = f"Kamu adalah Habisin AI. Jawab pertanyaan pengguna secara langsung, natural, dan spesifik—bukan dengan template. Produk aktif yang sedang dibahas: {selected_name or '(tidak ada produk aktif)'}. Pertanyaan pengguna: {actual_question}. Gunakan data produk aktif di bawah sebagai konteks utama. Kamu boleh memakai pengetahuan umum yang relevan untuk menjawab pertanyaan, tetapi jangan menampilkan atau membahas produk katalog lain yang tidak ditanyakan. Jangan mengulang deskripsi produk jika tidak diminta. Hanya katakan informasi belum tersedia jika pengguna meminta fakta khusus produk yang memang tidak ada pada data. Jangan mengarang bahan, kandungan, tanggal, harga, stok, atau kondisi produk. Untuk keamanan makanan, jangan menjamin aman/basi dan jangan mendiagnosis. Jawab bahasa Indonesia. Data produk aktif:\\n{matched_catalog or '(data produk aktif tidak tersedia)'}"
+    fallback = "Habisin AI belum tersambung. Coba lagi nanti."
+    started = asyncio.get_running_loop().time()
+    try:
+        answer = await asyncio.wait_for(asyncio.to_thread(gemini_prompt, prompt), timeout=15)
+        elapsed = asyncio.get_running_loop().time() - started
+        await asyncio.sleep(max(0.0, 3.0 - elapsed))
+        return {"jawaban": answer, "dari_gemini": True, "produk": product_data}
+    except Exception:
+        try:
+            answer = await asyncio.wait_for(
+                asyncio.to_thread(n8n_prompt, actual_question, product_data),
+                timeout=N8N_RAG_TIMEOUT_SECONDS,
+            )
+            elapsed = asyncio.get_running_loop().time() - started
+            await asyncio.sleep(max(0.0, 3.0 - elapsed))
+            return {"jawaban": answer, "dari_gemini": False, "dari_n8n": True, "produk": product_data}
+        except Exception:
+            elapsed = asyncio.get_running_loop().time() - started
