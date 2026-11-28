@@ -30,6 +30,7 @@ def list_cart(q: str = "", user: User = Depends(current_user), db: Session = Dep
     if q.strip(): query = query.where(Product.nama.ilike(f"%{q.strip()}%"))
     return [out(x) for x in db.scalars(query.order_by(CartItem.id.desc())).all()]
 
+# Menambah produk ke keranjang dengan validasi stok tersedia.
 @router.post("")
 def add_cart(data: CartIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
     product = db.get(Product, data.product_id)
