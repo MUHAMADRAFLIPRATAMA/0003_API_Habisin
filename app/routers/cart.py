@@ -78,6 +78,7 @@ def checkout(user: User = Depends(current_user), db: Session = Depends(get_db)):
     db.commit(); db.refresh(session)
     return {"session_id": session.id, "payment_code": session.payment_code, "total_harga": sum(product.harga_diskon * item.jumlah for item, product in locked), "berlaku_sampai": session.payment_expires_at}
 
+# Mengembalikan gambar QR sesi checkout dalam bentuk Base64.
 @router.get("/checkout/{session_id}/qr")
 def checkout_qr(session_id: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     session = db.get(CheckoutSession, session_id)
