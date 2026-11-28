@@ -385,6 +385,7 @@ def cart_insight(user: User = Depends(current_user), db: Session = Depends(get_d
     }
 
 
+# Endpoint tanya jawab yang membaca isi keranjang dari basis data.
 @router.post("/tanya-keranjang")
 async def ask_cart(
     data: CartQuestionRequest,
