@@ -26,3 +26,9 @@ with engine.begin() as connection:
         connection.execute(text("ALTER TABLE orders ADD COLUMN status_bayar VARCHAR(20) NOT NULL DEFAULT 'belum_dibayar'"))
     if "payment_code" not in order_columns:
         connection.execute(text("ALTER TABLE orders ADD COLUMN payment_code VARCHAR(64) NULL UNIQUE"))
+    if "payment_expires_at" not in order_columns:
+        connection.execute(text("ALTER TABLE orders ADD COLUMN payment_expires_at DATETIME NULL"))
+    if "checkout_session_id" not in order_columns:
+        connection.execute(text("ALTER TABLE orders ADD COLUMN checkout_session_id INTEGER NULL"))
+    Base.metadata.create_all(bind=engine)
+    if not inspect(engine).has_table("checkout_sessions"):
