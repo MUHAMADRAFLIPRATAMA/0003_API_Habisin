@@ -41,6 +41,7 @@ def add_cart(data: CartIn, user: User = Depends(current_user), db: Session = Dep
     if item.jumlah > product.stok: raise HTTPException(400, "Jumlah melebihi stok")
     db.commit(); db.refresh(item); return out(item)
 
+# Mengubah jumlah item dan menghitung ulang total di server.
 @router.put("/{item_id}")
 def update_cart(item_id: int, data: CartUpdate, user: User = Depends(current_user), db: Session = Depends(get_db)):
     item = db.get(CartItem, item_id)
