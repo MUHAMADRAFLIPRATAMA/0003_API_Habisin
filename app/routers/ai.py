@@ -280,3 +280,50 @@ async def ask_product(data: AskProductRequest, user: User = Depends(current_user
     return {"produk_id": product.id, "sisa_waktu": "Tidak tersedia", "jawaban": answer, "catatan": WARNING}
 
 class CartQuestionRequest(BaseModel):
+    pertanyaan: str = Field(default="", max_length=300)
+
+
+def _parse_batas(value: str | None) -> datetime | None:
+    """`batas_konsumsi` disimpan sebagai teks, jadi diurai ke datetime sebelum dihitung."""
+    if not value:
+        return None
+    teks = str(value).strip()[:19]
+    for pola in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(teks, pola)
+        except ValueError:
+            continue
+    return None
+
+
+def _cart_snapshot(db: Session, user: User) -> tuple[list[dict], dict]:
+    """Membaca isi keranjang pengguna beserta ringkasan yang dipakai fitur AI."""
+    rows = (
+        db.query(CartItem, Product)
+        .join(Product, CartItem.product_id == Product.id)
+        .filter(CartItem.user_id == user.id)
+        .all()
+    )
+    sekarang = datetime.now()
+    item: list[dict] = []
+    total = hemat = 0
+    segera: list[str] = []
+    for cart, produk in rows:
+        harga = produk.harga_diskon or 0
+        subtotal = harga * cart.jumlah
+        total += subtotal
+        hemat += max(0, (produk.harga_normal or 0) - harga) * cart.jumlah
+        batas = _parse_batas(produk.batas_konsumsi)
+        sisa_jam = None
+        if batas:
+            sisa_jam = int((batas - sekarang).total_seconds() // 3600)
+            if sisa_jam <= 6:
+                segera.append(produk.nama)
+        item.append(
+            {
+                "cart_id": cart.id,
+                "produk_id": produk.id,
+                "nama": produk.nama,
+                "jumlah": cart.jumlah,
+                "harga": harga,
+                "harga_normal": produk.harga_normal,
