@@ -69,6 +69,7 @@ def safe_question(text: str) -> str:
     return text.strip()
 
 
+# Daftar model Gemini yang dicoba berurutan sampai satu berhasil.
 def _gemini_models() -> list[str]:
     configured = os.getenv("GEMINI_MODEL", "").strip()
     models = [configured] if configured else []
