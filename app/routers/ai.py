@@ -374,3 +374,50 @@ def cart_insight(user: User = Depends(current_user), db: Session = Depends(get_d
         "dari_gemini": False,
         "model_tersedia": bool(GEMINI_API_KEY),
     }
+
+
+@router.post("/tanya-keranjang")
+async def ask_cart(
+    data: CartQuestionRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    """Menjawab pertanyaan pembeli tentang isi keranjang yang sedang aktif."""
+    buyer_only(user)
+    item, ringkasan = _cart_snapshot(db, user)
+    pertanyaan = safe_question(data.pertanyaan or "Apa isi keranjang saya dan apa saranmu?")
+    fallback = _cart_fallback(item, ringkasan, pertanyaan)
+    if not item:
+        return {
+            "pertanyaan": pertanyaan,
+            "jawaban": fallback,
+            "item": item,
+            "ringkasan": ringkasan,
+            "dari_gemini": False,
+            "catatan": WARNING,
+        }
+    daftar = "; ".join(
+        f"{i['nama']} x{i['jumlah']} (harga {i['harga']}, sisa waktu konsumsi {i['sisa_jam']} jam)"
+        for i in item
+    )
+    prompt = (
+        "Kamu asisten belanja aplikasi Habisin, marketplace makanan surplus. "
+        "Pembeli mengambil sendiri pesanan di toko penjual; tidak ada pengiriman, kurir, atau ongkos kirim, "
+        "jadi jangan pernah membahas pengiriman. "
+        f"Isi keranjang pembeli saat ini: {daftar}. "
+        f"Total belanja {ringkasan['total']} rupiah, penghematan {ringkasan['hemat']} rupiah, "
+        f"produk yang mendesak dikonsumsi: {', '.join(ringkasan['segera_kedaluwarsa']) or 'tidak ada'}. "
+        f"Pertanyaan pembeli: {pertanyaan}. "
+        "Jawab maksimal tiga kalimat dalam bahasa Indonesia, sebut angka dari data bila relevan, "
+        "dan sarankan mengambil lebih awal untuk produk yang mendesak. "
+        "Jangan menyatakan makanan pasti aman atau pasti basi, dan jangan memberi diagnosis kesehatan."
+    )
+    answer = await ask_ai(prompt, fallback)
+    return {
+        "pertanyaan": pertanyaan,
+        "jawaban": answer,
+        "item": item,
+        "ringkasan": ringkasan,
+        "dari_gemini": answer != fallback,
+        "catatan": WARNING,
+    }
