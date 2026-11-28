@@ -141,6 +141,7 @@ async def ask_ai(prompt: str, fallback: str) -> str:
             return fallback
 
 
+# Jalur cadangan RAG melalui webhook n8n bila Gemini tidak tersedia.
 def n8n_prompt(question: str, products: list[dict]) -> str:
     if not N8N_RAG_URL:
         raise RuntimeError("n8n belum dikonfigurasi")
