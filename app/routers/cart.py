@@ -19,6 +19,7 @@ class CartIn(BaseModel):
 class CartUpdate(BaseModel):
     jumlah: int = Field(gt=0)
 
+# Menyamakan bentuk data keranjang untuk respons API.
 def out(item):
     return {"id": item.id, "product_id": item.product_id, "jumlah": item.jumlah, "product": item.product}
 
