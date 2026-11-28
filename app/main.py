@@ -32,3 +32,10 @@ with engine.begin() as connection:
         connection.execute(text("ALTER TABLE orders ADD COLUMN checkout_session_id INTEGER NULL"))
     Base.metadata.create_all(bind=engine)
     if not inspect(engine).has_table("checkout_sessions"):
+        Base.metadata.create_all(bind=engine)
+    
+
+
+app = FastAPI(title="Habisin API", version="1.0.0")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
+media_dir = Path(__file__).resolve().parent.parent / "media"
