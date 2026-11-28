@@ -56,6 +56,7 @@ app.include_router(reports.router)
 app.include_router(cart.router)
 app.include_router(struk.router)
 
+# Health check untuk Docker dan pemantauan uptime.
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "habisin-api", "qr_base": payment_base_url()}
