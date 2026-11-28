@@ -91,3 +91,16 @@ def checkout_qr(session_id: int, request: Request, user: User = Depends(current_
         "detik_berlaku": PAYMENT_QR_TTL_SECONDS,
     }
 
+@router.get("/checkout/{session_id}/status")
+def checkout_status(session_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    session = db.get(CheckoutSession, session_id)
+    if not session or session.user_id != user.id: raise HTTPException(404, "Checkout tidak ditemukan")
+    return {"session_id": session.id, "status": session.status}
+
+@router.post("/checkout/{session_id}/refresh")
+def refresh_checkout(session_id: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    session = db.get(CheckoutSession, session_id)
+    if not session or session.user_id != user.id or session.status != "aktif": raise HTTPException(404, "Checkout tidak ditemukan")
+    session.payment_code = secrets.token_urlsafe(24); session.payment_expires_at = datetime.now() + timedelta(seconds=PAYMENT_QR_TTL_SECONDS)
+    db.commit(); db.refresh(session)
+    return checkout_qr(session_id, request, user, db)
