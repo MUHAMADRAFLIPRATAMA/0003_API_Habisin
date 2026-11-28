@@ -46,3 +46,10 @@ app.include_router(products.router)
 app.include_router(orders.router)
 app.include_router(ai.router)
 app.include_router(social.router)
+app.include_router(reports.router)
+app.include_router(cart.router)
+app.include_router(struk.router)
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "habisin-api", "qr_base": payment_base_url()}
