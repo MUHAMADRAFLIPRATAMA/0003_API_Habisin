@@ -57,6 +57,7 @@ def delete_cart(item_id: int, user: User = Depends(current_user), db: Session = 
     if not item or item.user_id != user.id: raise HTTPException(404, "Item keranjang tidak ditemukan")
     db.delete(item); db.commit(); return {"ok": True}
 
+# Checkout: mengunci baris produk, membuat sesi, dan menerbitkan kode pembayaran.
 @router.post("/checkout")
 def checkout(user: User = Depends(current_user), db: Session = Depends(get_db)):
     active = db.scalar(select(CheckoutSession).where(CheckoutSession.user_id == user.id, CheckoutSession.status == "aktif"))
