@@ -38,3 +38,16 @@ def add_cart(data: CartIn, user: User = Depends(current_user), db: Session = Dep
     if item.jumlah > product.stok: raise HTTPException(400, "Jumlah melebihi stok")
     db.commit(); db.refresh(item); return out(item)
 
+@router.put("/{item_id}")
+def update_cart(item_id: int, data: CartUpdate, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    item = db.get(CartItem, item_id)
+    if not item or item.user_id != user.id: raise HTTPException(404, "Item keranjang tidak ditemukan")
+    product = db.get(Product, item.product_id)
+    if not product or data.jumlah > product.stok: raise HTTPException(400, "Stok tidak mencukupi")
+    item.jumlah = data.jumlah; db.commit(); db.refresh(item); return out(item)
+
+@router.delete("/{item_id}")
+def delete_cart(item_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    item = db.get(CartItem, item_id)
+    if not item or item.user_id != user.id: raise HTTPException(404, "Item keranjang tidak ditemukan")
+    db.delete(item); db.commit(); return {"ok": True}
