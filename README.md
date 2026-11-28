@@ -341,31 +341,28 @@ Membutuhkan `cloudflared/config.yml` (salin dari `cloudflared/config.example.yml
 
 ## 15. Progress Mingguan (Weekly Progress)
 
-Bagian ini mencatat pekerjaan per minggu beserta commit yang mewakilinya, sehingga dosen dapat menelusuri progres langsung dari riwayat Git.
+Progress didokumentasikan dari riwayat commit git pada repositori ini.
 
-#### Minggu 1 (24 November 2026)
+### Minggu 1 (24 November 2026)
 
 - [x] `.gitignore`, `.dockerignore`, dan contoh environment (`421c1d5`)
 - [x] Docker Compose, Dockerfile, dan konfigurasi Nginx (`a55db86`)
-- [x] Model SQLAlchemy dan skema basis data 9 tabel (`a479290`)
-- [x] Konfigurasi environment dan resolusi base URL QR (`5c88131`)
-- [x] Keamanan: hash bcrypt, JWT HS256, dan skema Pydantic (`2e08b86`)
+- [x] README arsitektur layanan, kontrak endpoint, dan cara menjalankan (`60a51d3`)
 
-#### Minggu 2 (24 November 2026) - dalam proses commit
+### Minggu 2 (25 - 28 November 2026)
 
-Pekerjaan berikut sudah selesai dan sedang di-commit bertahap satu per satu.
-
-- [ ] Bootstrap FastAPI dan endpoint `/health`
-- [ ] Router autentikasi: registrasi, login, refresh token, profil
-- [ ] Router produk: katalog, CRUDS, unggah gambar
-- [ ] Router keranjang: CRUDS, checkout atomik, QR sesi, status sesi
-- [ ] Router pesanan: riwayat, pembayaran QR, pembatalan, halaman bayar
-- [ ] Router sosial: ulasan dan favorit dengan kepemilikan data
-- [ ] Router struk, laporan CSV, daftar toko
-- [ ] Router Habisin AI: chat, saran harga, deskripsi, ringkasan penjualan
-- [ ] Seed data demo dan skrip operasional (IP LAN, tunnel, demo)
-- [ ] Antarmuka web pembeli dan penjual
-- [ ] README API, kontrak endpoint, dan dokumen SRS
+- [x] Bootstrap FastAPI: impor, CORS, folder media, dan registrasi router (`1784f4f`, `ec58e4e`, `803c5b2`)
+- [x] Registrasi router auth, produk, pesanan, sosial, laporan, struk, dan AI (`63745f4`, `1d32009`, `9135312`)
+- [x] Endpoint health, status layanan, dan inisialisasi basis data (`4931273`, `5418e4c`)
+- [x] Router keranjang: struktur, daftar, tambah, ubah, dan hapus (`8657c1d`, `788ba9c`, `fb759b3`, `b82bba2`, `9e83b0e`)
+- [x] Checkout atomik, gambar QR, penyegaran kode, dan status sesi (`bb6b3f9`, `28ff0cd`, `66d2e00`)
+- [x] Asisten AI: skema permintaan, pembatas peran, dan klien Gemini (`e91f4e6`, `919a17d`, `f3a9b29`)
+- [x] Pemanggilan model, prompt RAG n8n, dan endpoint chat (`8bda7a5`, `0781c31`)
+- [x] Saran harga, deskripsi produk, ringkasan penjualan, dan pencarian cerdas (`f3a2875`, `1df954f`)
+- [x] Tanya produk dan AI isi keranjang (`80ff8be`, `1d80f4b`)
+- [x] Dokumentasi kode router AI (`fca97dc`, `14d03c9`, `8bb7128`, `b1105e6`, `f9f3ad7`, `2aa1418`, `9a23a56`, `a76969b`, `2a7a802`, `3e47ab8`)
+- [x] Dokumentasi kode router keranjang (`890c485`, `f44ee6b`, `e9babd9`, `ce4686d`, `b622a32`, `cd10bff`, `983043f`, `577f320`)
+- [x] Dokumentasi kode bootstrap API (`a8ea3bc`, `de5bad2`, `998723c`, `24bc146`, `834cde9`, `a145622`, `deae9da`)
 
 ## 16. Lisensi dan Atribusi
 
