@@ -120,6 +120,7 @@ def gemini_prompt(prompt: str) -> str:
     raise RuntimeError(last_error)
 
 
+# Merapikan jawaban model menjadi satu kalimat pendek.
 def one_sentence(text: str, fallback: str) -> str:
     value = " ".join(str(text).replace("\n", " ").split()).strip()
     value = re.split(r"(?<=[.!?])\s+", value, maxsplit=1)[0].strip()
