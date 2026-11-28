@@ -160,6 +160,7 @@ def n8n_prompt(question: str, products: list[dict]) -> str:
     return answer
 
 
+# Endpoint percakapan asisten belanja untuk pembeli.
 @router.post("/chat", response_model=ChatResponse)
 async def chat(data: ChatRequest, db: Session = Depends(get_db)):
     question = safe_question(data.pesan)
