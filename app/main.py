@@ -12,3 +12,10 @@ with engine.begin() as connection:
     columns = {column["name"] for column in inspect(engine).get_columns("products")}
     if "penjual_id" not in columns:
         connection.execute(text("ALTER TABLE products ADD COLUMN penjual_id INTEGER NULL"))
+        connection.execute(text("CREATE INDEX ix_products_penjual_id ON products (penjual_id)"))
+    if "gambar_url" not in columns:
+        connection.execute(text("ALTER TABLE products ADD COLUMN gambar_url VARCHAR(500) NULL"))
+    if "batas_konsumsi" not in columns:
+        connection.execute(text("ALTER TABLE products ADD COLUMN batas_konsumsi VARCHAR(16) NULL"))
+    else:
+        connection.execute(text("ALTER TABLE products MODIFY COLUMN batas_konsumsi VARCHAR(16) NULL"))
