@@ -36,6 +36,7 @@ with engine.begin() as connection:
     
 
 
+# Inisialisasi aplikasi FastAPI beserta metadata layanan.
 app = FastAPI(title="Habisin API", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
 media_dir = Path(__file__).resolve().parent.parent / "media"
