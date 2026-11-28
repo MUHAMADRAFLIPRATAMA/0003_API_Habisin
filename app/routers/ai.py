@@ -45,3 +45,50 @@ class ChatResponse(BaseModel):
 
 def seller_only(user: User):
     if user.peran != "penjual":
+        raise HTTPException(403, "Akses khusus penjual")
+
+
+def buyer_only(user: User):
+    if user.peran != "pembeli":
+        raise HTTPException(403, "Akses khusus pembeli")
+
+
+def authenticated_only(user: User):
+    if user.peran not in {"pembeli", "penjual"}:
+        raise HTTPException(403, "Role akun tidak valid")
+
+
+def safe_question(text: str) -> str:
+    lowered = text.lower()
+    blocked = ("pasti aman", "sudah basi", "gejala sakit", "keracunan", "diagnosis")
+    if any(word in lowered for word in blocked):
+        raise HTTPException(400, "Pertanyaan di luar cakupan. Hubungi penjual atau tenaga kesehatan.")
+    return text.strip()
+
+
+def _gemini_models() -> list[str]:
+    configured = os.getenv("GEMINI_MODEL", "").strip()
+    models = [configured] if configured else []
+    try:
+        req = urllib.request.Request(
+            "https://generativelanguage.googleapis.com/v1beta/models?pageSize=100",
+            headers={"x-goog-api-key": GEMINI_API_KEY},
+        )
+        with urllib.request.urlopen(req, timeout=8) as response:
+            data = json.loads(response.read())
+        available = [str(item.get("name", "")).removeprefix("models/") for item in data.get("models", [])]
+        available = [name for name in available if "flash" in name and "generateContent" in str(next((item.get("supportedGenerationMethods", []) for item in data.get("models", []) if str(item.get("name", "")).endswith(name)), []))]
+        models.extend(available)
+    except Exception:
+        pass
+    models.extend(["gemini-flash-lite-latest", "gemini-flash-latest"])
+    return list(dict.fromkeys(model for model in models if model))[:5]
+
+
+def gemini_prompt(prompt: str) -> str:
+    if not GEMINI_API_KEY:
+        raise RuntimeError("AI key belum dikonfigurasi")
+    variants = [
+        {"maxOutputTokens": 600, "thinkingConfig": {"thinkingBudget": 0}},
+        {"maxOutputTokens": 600},
+    ]
