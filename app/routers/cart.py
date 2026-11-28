@@ -104,6 +104,7 @@ def checkout_status(session_id: int, user: User = Depends(current_user), db: Ses
     if not session or session.user_id != user.id: raise HTTPException(404, "Checkout tidak ditemukan")
     return {"session_id": session.id, "status": session.status}
 
+# Menerbitkan kode pembayaran baru dan membatalkan kode sebelumnya.
 @router.post("/checkout/{session_id}/refresh")
 def refresh_checkout(session_id: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     session = db.get(CheckoutSession, session_id)
