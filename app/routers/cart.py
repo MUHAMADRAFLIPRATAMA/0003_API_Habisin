@@ -50,6 +50,7 @@ def update_cart(item_id: int, data: CartUpdate, user: User = Depends(current_use
     if not product or data.jumlah > product.stok: raise HTTPException(400, "Stok tidak mencukupi")
     item.jumlah = data.jumlah; db.commit(); db.refresh(item); return out(item)
 
+# Menghapus satu item dari keranjang milik pengguna.
 @router.delete("/{item_id}")
 def delete_cart(item_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
     item = db.get(CartItem, item_id)
