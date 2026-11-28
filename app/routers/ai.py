@@ -186,3 +186,50 @@ async def chat(data: ChatRequest, db: Session = Depends(get_db)):
             return {"jawaban": answer, "dari_gemini": False, "dari_n8n": True, "produk": product_data}
         except Exception:
             elapsed = asyncio.get_running_loop().time() - started
+            await asyncio.sleep(max(0.0, 3.0 - elapsed))
+            return {"jawaban": fallback, "dari_gemini": False, "dari_n8n": False, "produk": product_data}
+
+
+@router.post("/saran-harga")
+async def suggest_price(data: PriceRequest, user: User = Depends(current_user)):
+    seller_only(user)
+    # Harga deterministik dari batas konsumsi; AI hanya menjelaskan alasan.
+    discount_rate = 0.25
+    if data.batas_konsumsi:
+        try:
+            expiry = datetime.strptime(data.batas_konsumsi[:16], "%Y-%m-%d %H:%M")
+            days_left = (expiry - datetime.now()).total_seconds() / 86400
+            discount_rate = 0.45 if days_left <= 1 else 0.35 if days_left <= 3 else 0.25
+        except ValueError:
+            pass
+    discount = max(1, min(data.harga_normal - 1, round(data.harga_normal * (1 - discount_rate))))
+    fallback = f"Usulan harga Rp{discount}. Pertimbangkan batas konsumsi dan kondisi produk sebelum mengubah harga."
+    answer = await ask_ai(f"Jelaskan dalam satu kalimat alasan saran harga Rp{discount} untuk produk {data.nama} dengan harga normal Rp{data.harga_normal} dan batas konsumsi {data.batas_konsumsi or 'belum diisi'}. Jangan menjamin keamanan makanan.", fallback)
+    return {"harga_saran": discount, "alasan": answer}
+
+
+@router.post("/deskripsi-produk")
+async def product_description(data: DescriptionRequest, user: User = Depends(current_user)):
+    seller_only(user)
+    fallback = f"{data.nama} merupakan {data.jenis_makanan} pilihan dengan harga diskon untuk membantu mengurangi makanan terbuang."
+    answer = await ask_ai(f"Tulis tepat satu kalimat deskripsi bahasa Indonesia untuk produk {data.nama}, jenis {data.jenis_makanan}; maksimal 20 kata, tanpa daftar, baris baru, klaim kesehatan, atau jaminan keamanan.", fallback)
+    return {"deskripsi": one_sentence(answer, fallback)}
+
+
+@router.get("/ringkasan-penjualan")
+async def sales_summary(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    seller_only(user)
+    rows = list(db.scalars(select(Order).join(Product).where(Product.penjual_id == user.id, Order.status == "selesai")).all())
+    total_orders = len(rows)
+    revenue = sum(x.total_harga for x in rows)
+    units = sum(x.jumlah for x in rows)
+    fallback = f"Dalam data yang tersedia, terdapat {total_orders} pesanan selesai, {units} porsi tersalamatkan, dan pendapatan Rp{revenue}."
+    answer = await ask_ai(f"Ringkas data penjualan berikut tanpa mengubah angka: pesanan={total_orders}, porsi={units}, pendapatan={revenue} rupiah.", fallback)
+    return {"jumlah_pesanan": total_orders, "jumlah_porsi": units, "pendapatan": revenue, "ringkasan": answer}
+
+
+@router.post("/cari")
+async def smart_search(data: SmartSearchRequest, db: Session = Depends(get_db)):
+    # Pencarian katalog publik; endpoint tidak membutuhkan token.
+    text = safe_question(data.pertanyaan)
+    answer = await ask_ai(f"Ubah kalimat pencarian makanan ini menjadi kata kunci singkat saja: {text}", text)
