@@ -49,6 +49,7 @@ def seller_only(user: User):
         raise HTTPException(403, "Akses khusus penjual")
 
 
+# Batasan peran: endpoint ini hanya untuk pembeli.
 def buyer_only(user: User):
     if user.peran != "pembeli":
         raise HTTPException(403, "Akses khusus pembeli")
