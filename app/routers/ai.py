@@ -43,6 +43,7 @@ class ChatResponse(BaseModel):
     produk: list[dict] = []
 
 
+# Batasan peran: hanya penjual yang boleh memakai endpoint penjualan.
 def seller_only(user: User):
     if user.peran != "penjual":
         raise HTTPException(403, "Akses khusus penjual")
