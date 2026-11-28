@@ -24,3 +24,17 @@ def out(item):
 
 @router.get("")
 def list_cart(q: str = "", user: User = Depends(current_user), db: Session = Depends(get_db)):
+    query = select(CartItem).join(Product).where(CartItem.user_id == user.id)
+    if q.strip(): query = query.where(Product.nama.ilike(f"%{q.strip()}%"))
+    return [out(x) for x in db.scalars(query.order_by(CartItem.id.desc())).all()]
+
+@router.post("")
+def add_cart(data: CartIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    product = db.get(Product, data.product_id)
+    if not product or product.stok < data.jumlah: raise HTTPException(400, "Produk tidak tersedia atau stok kurang")
+    item = db.scalar(select(CartItem).where(CartItem.user_id == user.id, CartItem.product_id == data.product_id))
+    if item: item.jumlah += data.jumlah
+    else: item = CartItem(user_id=user.id, product_id=data.product_id, jumlah=data.jumlah); db.add(item)
+    if item.jumlah > product.stok: raise HTTPException(400, "Jumlah melebihi stok")
+    db.commit(); db.refresh(item); return out(item)
+
