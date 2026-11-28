@@ -60,6 +60,7 @@ def authenticated_only(user: User):
         raise HTTPException(403, "Role akun tidak valid")
 
 
+# Menyaring pertanyaan yang di luar cakupan asisten (mis. diagnosis medis).
 def safe_question(text: str) -> str:
     lowered = text.lower()
     blocked = ("pasti aman", "sudah basi", "gejala sakit", "keracunan", "diagnosis")
