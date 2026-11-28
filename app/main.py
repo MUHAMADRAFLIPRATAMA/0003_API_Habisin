@@ -38,6 +38,7 @@ with engine.begin() as connection:
 
 # Inisialisasi aplikasi FastAPI beserta metadata layanan.
 app = FastAPI(title="Habisin API", version="1.0.0")
+# Mengizinkan klien web memanggil API dari domain berbeda.
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
 media_dir = Path(__file__).resolve().parent.parent / "media"
 media_dir.mkdir(exist_ok=True)
