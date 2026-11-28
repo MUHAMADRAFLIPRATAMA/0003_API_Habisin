@@ -89,6 +89,7 @@ def _gemini_models() -> list[str]:
     return list(dict.fromkeys(model for model in models if model))[:5]
 
 
+# Pemanggilan HTTP ke Gemini beserta penanganan galat dan model cadangan.
 def gemini_prompt(prompt: str) -> str:
     if not GEMINI_API_KEY:
         raise RuntimeError("AI key belum dikonfigurasi")
