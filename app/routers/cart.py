@@ -51,3 +51,16 @@ def delete_cart(item_id: int, user: User = Depends(current_user), db: Session = 
     item = db.get(CartItem, item_id)
     if not item or item.user_id != user.id: raise HTTPException(404, "Item keranjang tidak ditemukan")
     db.delete(item); db.commit(); return {"ok": True}
+
+@router.post("/checkout")
+def checkout(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    active = db.scalar(select(CheckoutSession).where(CheckoutSession.user_id == user.id, CheckoutSession.status == "aktif"))
+    if active:
+        total = sum(x.total_harga for x in db.scalars(select(Order).where(Order.checkout_session_id == active.id)).all())
+        return {"session_id": active.id, "payment_code": active.payment_code, "total_harga": total, "berlaku_sampai": active.payment_expires_at}
+    items = list(db.scalars(select(CartItem).where(CartItem.user_id == user.id)).all())
+    if not items: raise HTTPException(400, "Keranjang kosong")
+    locked = []
+    for item in items:
+        product = db.scalar(select(Product).where(Product.id == item.product_id).with_for_update())
+        if not product or product.stok < item.jumlah: raise HTTPException(400, "Stok produk berubah atau tidak mencukupi")
