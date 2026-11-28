@@ -23,6 +23,7 @@ class CartUpdate(BaseModel):
 def out(item):
     return {"id": item.id, "product_id": item.product_id, "jumlah": item.jumlah, "product": item.product}
 
+# Daftar isi keranjang milik pengguna yang sedang masuk.
 @router.get("")
 def list_cart(q: str = "", user: User = Depends(current_user), db: Session = Depends(get_db)):
     query = select(CartItem).join(Product).where(CartItem.user_id == user.id)
