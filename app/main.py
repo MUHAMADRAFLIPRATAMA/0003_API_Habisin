@@ -47,6 +47,7 @@ app.mount("/media", StaticFiles(directory=media_dir), name="media")
 # Router autentikasi dan katalog produk.
 app.include_router(auth.router)
 app.include_router(products.router)
+# Router pesanan dan keranjang belanja.
 app.include_router(orders.router)
 app.include_router(ai.router)
 app.include_router(social.router)
